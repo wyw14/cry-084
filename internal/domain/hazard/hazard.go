@@ -127,6 +127,9 @@ func (p closePolicy) evaluate(h Hazard) error {
 		if err := p.checkRectification(h); err != nil {
 			return err
 		}
+		if p.requiresIndependentReview(h.Priority) && !p.reviewed(h) {
+			return fmt.Errorf("%w: critical hazard requires independent review before close", shared.ErrInvalidState)
+		}
 	}
 	return nil
 }
