@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: 商场消防设施巡检与隐患整改 API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /inspection-tasks/{id}/results:
+    post:
+      summary: 扫码提交巡检结果
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '201': {description: 已记录并按异常结果创建隐患}
+        '409': {description: 版本或状态冲突}
+  /hazards/{id}/review:
+    post:
+      summary: 复验隐患并原子恢复设备
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        '200': {description: 已完成复验}
+components:
+  schemas:
+    Error:
+      type: object
+      required: [code,message,field_errors,request_id]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        field_errors: {type: object, additionalProperties: {type: string}}
+        request_id: {type: string}
