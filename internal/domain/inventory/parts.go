@@ -69,7 +69,7 @@ type stockLedger struct {
 }
 
 func (l *stockLedger) reserve(quantity int) error {
-	if l.part.Quantity < quantity {
+	if l.available() < quantity {
 		return fmt.Errorf("%w: insufficient stock", shared.ErrConflict)
 	}
 	l.pending = quantity
