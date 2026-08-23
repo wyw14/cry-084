@@ -85,7 +85,7 @@ type Event struct {
 
 func DeriveStatus(events []Event) Status {
 	timeline := newTimeline(events)
-	latest, ok := timeline.latest()
+	latest, ok := timeline.latestValid()
 	if !ok {
 		return StatusActive
 	}
@@ -120,6 +120,17 @@ func (t eventTimeline) validEvents() []Event {
 		}
 	}
 	return result
+}
+
+// latestValid returns the most recent valid event on the timeline. The current
+// status may only be determined by valid events; an invalid event that arrives
+// later must not overwrite the state established by the last valid event.
+func (t eventTimeline) latestValid() (Event, bool) {
+	valid := t.validEvents()
+	if len(valid) == 0 {
+		return Event{}, false
+	}
+	return valid[len(valid)-1], true
 }
 
 func (t eventTimeline) invalidEvents() []Event {
