@@ -81,7 +81,7 @@ func (b snapshotBuilder) validate() error {
 }
 
 func (b snapshotBuilder) build() Snapshot {
-	return Snapshot{TemplateID: b.source.TemplateID, VersionID: b.source.ID, Number: b.source.Number, Fields: b.source.Fields, CapturedAt: b.capturedAt}
+	return Snapshot{TemplateID: b.source.TemplateID, VersionID: b.source.ID, Number: b.source.Number, Fields: b.copyFields(), CapturedAt: b.capturedAt}
 }
 
 func (b snapshotBuilder) copyFields() []Field {
