@@ -49,7 +49,7 @@ type Result struct {
 
 func VerifyScan(task Task, assetID shared.ID, expectedQR string, scan Scan, uploadAt time.Time) error {
 	policy := scanPolicy{taskID: task.ID, assetID: assetID, inspectorID: task.InspectorID, windowStart: task.WindowStart, windowEnd: task.WindowEnd, expectedQR: expectedQR}
-	return policy.validateIdentityOnly(scan, uploadAt)
+	return policy.validate(scan, uploadAt)
 }
 
 type scanPolicy struct {
@@ -61,7 +61,12 @@ type scanPolicy struct {
 	expectedQR  string
 }
 
-func (p scanPolicy) validateIdentityOnly(scan Scan, uploadAt time.Time) error {
+// validate enforces that an offline-submitted scan originates from the real
+// device (QR secret match) captured within the task's valid time window, by
+// the assigned inspector, against the correct task and asset. Each of these
+// checks is mandatory: an offline backfill must not be accepted on identity
+// alone, since the client is the only source of the scanned timestamp and QR.
+func (p scanPolicy) validate(scan Scan, uploadAt time.Time) error {
 	if err := p.validateTask(scan); err != nil {
 		return err
 	}
@@ -69,6 +74,12 @@ func (p scanPolicy) validateIdentityOnly(scan Scan, uploadAt time.Time) error {
 		return err
 	}
 	if err := p.validateInspector(scan); err != nil {
+		return err
+	}
+	if err := p.validateQRSecret(scan); err != nil {
+		return err
+	}
+	if err := p.validateScanWindow(scan); err != nil {
 		return err
 	}
 	return p.validateUploadOrder(scan, uploadAt)
@@ -91,6 +102,26 @@ func (p scanPolicy) validateAsset(scan Scan) error {
 func (p scanPolicy) validateInspector(scan Scan) error {
 	if p.inspectorID != scan.InspectorID {
 		return fmt.Errorf("%w: inspector mismatch", shared.ErrForbidden)
+	}
+	return nil
+}
+
+func (p scanPolicy) validateQRSecret(scan Scan) error {
+	// The scanned QR secret must match the secret bound to the real asset.
+	// Empty secrets cannot be reconciled to a physical device, so they are
+	// rejected outright to prevent fabricated offline submissions.
+	if p.expectedQR == "" || p.expectedQR != scan.QRSecret {
+		return fmt.Errorf("%w: qr secret mismatch", shared.ErrForbidden)
+	}
+	return nil
+}
+
+func (p scanPolicy) validateScanWindow(scan Scan) error {
+	// An offline-submitted scan must have been captured within the task's
+	// assigned window; otherwise a stale or future timestamp can be injected
+	// to satisfy a window that the inspector never actually worked.
+	if scan.ScannedAt.Before(p.windowStart) || !scan.ScannedAt.Before(p.windowEnd) {
+		return fmt.Errorf("%w: scan outside task window", shared.ErrForbidden)
 	}
 	return nil
 }
