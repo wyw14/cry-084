@@ -58,6 +58,7 @@ func (v routeValidator) sortedStops() []Stop {
 
 func (v routeValidator) validateSequence(stops []Stop) error {
 	orders := map[int]bool{}
+	assets := map[shared.ID]bool{}
 	for index, stop := range stops {
 		if err := v.validateStop(index, stop); err != nil {
 			return err
@@ -66,6 +67,10 @@ func (v routeValidator) validateSequence(stops []Stop) error {
 			return fmt.Errorf("%w: duplicate stop order", shared.ErrValidation)
 		}
 		orders[stop.Order] = true
+		if assets[stop.AssetID] {
+			return fmt.Errorf("%w: duplicate asset on route", shared.ErrValidation)
+		}
+		assets[stop.AssetID] = true
 	}
 	return nil
 }
@@ -81,14 +86,6 @@ func (v routeValidator) validateStop(index int, stop Stop) error {
 		return fmt.Errorf("%w: stop duration is invalid", shared.ErrValidation)
 	}
 	return nil
-}
-
-func (v routeValidator) assetIDs(stops []Stop) []shared.ID {
-	result := make([]shared.ID, 0, len(stops))
-	for _, stop := range stops {
-		result = append(result, stop.AssetID)
-	}
-	return result
 }
 
 type Shift struct {
